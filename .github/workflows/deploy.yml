@@ -1,42 +1,31 @@
-name: Deploy
+name: Deploy to GitHub Pages
+
 on:
   push:
-    branches: [ main ]
-  pull_request:
     branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          submodules: false
-          
-      - name: Clean Git Config
-        run: |
-          git config --local --unset-all submodule.masjidalhidayah.url || true
-          git config --local --unset-all submodule.masjidalhidayah.active || true
+          submodules: false  # Disable submodule checkout
           
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
           
       - name: Install Dependencies
         run: npm install
-          
+        
       - name: Build
         run: npm run build
-        env:
-          VITE_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VITE_GITHUB_REPO: ${{ github.repository }}
-          VITE_GITHUB_OWNER: ${{ github.repository_owner }}
-          
-      - name: Deploy to GitHub Pages
+        
+      - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
