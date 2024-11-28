@@ -9,8 +9,6 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 export const RegistrationService = {
   async create(data) {
     try {
-      await delay(1000); // Simulasi network delay
-      
       const registrations = JSON.parse(localStorage.getItem('registrations') || '[]');
       const newRegistration = {
         ...data,
@@ -34,15 +32,13 @@ export const RegistrationService = {
       if (!(file instanceof Blob)) {
         throw new Error('Invalid file format');
       }
-
-      await delay(1500); // Simulasi upload delay
       
       // Simpan foto sebagai Base64
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         
         reader.onload = () => {
-          resolve(reader.result); // Ini akan berisi string base64
+          resolve(reader.result); // Return base64 string
         };
         
         reader.onerror = () => {

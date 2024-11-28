@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { createContext, useContext, useState, useEffect } from 'react';
 import { RegistrationService } from '../services/api';
+import { GitHubService } from '../services/github';
 
 const RegistrationContext = createContext();
 
@@ -47,7 +48,7 @@ export const RegistrationProvider = ({ children }) => {
       // Upload foto
       const photoUrl = await RegistrationService.uploadPhoto(data.child.photo);
       
-      // Format dan simpan data
+      // Format data
       const formattedData = {
         child: {
           name: data.child.name,
@@ -58,15 +59,16 @@ export const RegistrationProvider = ({ children }) => {
         registrationDate: new Date().toISOString()
       };
 
-      const result = await RegistrationService.create(formattedData);
+      // Simpan ke GitHub
+      const result = await GitHubService.saveRegistration(formattedData);
       
-      // Update state
-      setRegistrations(prev => [...prev, result]);
-      setQuota(prev => ({
-        ...prev,
-        registered: prev.registered + 1,
-        available: prev.available - 1
-      }));
+      // Update state lokal
+      setRegistrations(result.registrations);
+      setQuota({
+        total: result.metadata.totalQuota,
+        registered: result.metadata.registeredCount,
+        available: result.metadata.totalQuota - result.metadata.registeredCount
+      });
 
       return result;
     } catch (error) {
