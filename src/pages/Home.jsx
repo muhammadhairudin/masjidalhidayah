@@ -2,8 +2,11 @@ import { Link } from 'react-router-dom'
 import CountDown from '../components/CountDown'
 import QuotaInfo from '../components/QuotaInfo'
 import khitanBrosur from '/khitan al hidayah 6.png'
+import { useRegistration } from '../context/RegistrationContext'
 
 const Home = () => {
+  const { loading } = useRegistration()
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -44,7 +47,13 @@ const Home = () => {
       {/* Quota Info */}
       <div className="py-8 bg-gray-50">
         <div className="container mx-auto px-4">
-          <QuotaInfo />
+          {loading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <QuotaInfo />
+          )}
         </div>
       </div>
 

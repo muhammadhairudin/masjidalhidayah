@@ -1,0 +1,26 @@
+{
+  "registrations": [
+    {
+      "id": "REG-2024-001",
+      "registrationDate": "2024-03-20T10:00:00Z",
+      "child": {
+        "name": "string",
+        "birthDate": "date",
+        "photoUrl": "string"
+      },
+      "parents": {
+        "fatherName": "string",
+        "motherName": "string",
+        "phone": "string",
+        "address": "string"
+      },
+      "status": "REGISTERED",
+      "verificationStatus": "PENDING"
+    }
+  ],
+  "metadata": {
+    "totalQuota": 45,
+    "registeredCount": 0,
+    "lastUpdated": "2024-03-20T10:00:00Z"
+  }
+} 

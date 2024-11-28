@@ -1,127 +1,125 @@
 import { useForm } from 'react-hook-form'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import imageCompression from 'browser-image-compression'
-
-// Definisikan API_URL di luar komponen
-const API_URL = '/api/upload'
+import { useRegistration } from '../context/RegistrationContext';
+import { calculateAge } from '../utils/registration';
+import { useNavigate } from 'react-router-dom';
 
 const Pendaftaran = () => {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm()
+  const { register, handleSubmit, watch, reset, formState: { errors, setError, clearErrors } } = useForm()
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState(null)
+  const { registerParticipant, loading, error } = useRegistration();
+  const navigate = useNavigate();
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [ageWarning, setAgeWarning] = useState('');
 
   const namaAnak = watch('namaAnak', '')
+  const tanggalLahir = watch('tanggalLahir');
+
+  useEffect(() => {
+    if (tanggalLahir) {
+      const age = calculateAge(new Date(tanggalLahir));
+      if (age < 6) {
+        setAgeWarning('Perhatian: Usia minimal yang direkomendasikan adalah 6 tahun');
+      } else {
+        setAgeWarning('');
+      }
+    }
+  }, [tanggalLahir]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran foto maksimal 5MB');
+        e.target.value = '';
+        return;
+      }
       setPreview(URL.createObjectURL(file))
     }
   }
 
-  const fetchWithRetry = async (url, options, retries = 3) => {
-    const timeout = 60000; // 60 detik timeout
+  const validateRegistration = (data) => {
+    const errors = [];
     
-    for (let i = 0; i < retries; i++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-        
-        const response = await fetch(url, {
-          ...options,
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        return response;
-      } catch (err) {
-        console.log(`Attempt ${i + 1} failed:`, err);
-        if (i === retries - 1) throw err;
-        // Tunggu sebentar sebelum retry
-        await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
-      }
+    // Validasi usia
+    const birthDate = new Date(data.tanggalLahir);
+    const age = calculateAge(birthDate);
+    if (age < 6) {
+      errors.push("Usia minimal peserta adalah 6 tahun");
     }
+
+    // Validasi nomor telepon
+    if (!/^08[1-9][0-9]{7,10}$/.test(data.noTelp)) {
+      errors.push("Format nomor telepon tidak valid");
+    }
+
+    return errors;
+  }
+
+  const generateRegistrationId = () => {
+    const currentCount = getRegistrationCount() + 1;
+    return `REG-2024-${String(currentCount).padStart(3, '0')}`;
   }
 
   const onSubmit = async (data) => {
     try {
-      setUploading(true);
-      console.log('Starting upload...');
+      setLoadingMessage('Memproses foto...');
+      const compressedPhoto = await compressImage(data.foto[0]);
 
-      const formData = new FormData();
-      formData.append('foto', data.foto[0]);
-      formData.append('namaAnak', data.namaAnak);
-      formData.append('tanggalLahir', data.tanggalLahir);
-      formData.append('namaAyah', data.namaAyah);
-      formData.append('namaIbu', data.namaIbu);
-      formData.append('noTelp', data.noTelp);
-      formData.append('alamat', data.alamat);
-      formData.append('persetujuan', data.persetujuan);
-
-      console.log('Uploading to:', API_URL);
-      console.log('Form data:', Object.fromEntries(formData));
-
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        body: formData,
-        mode: 'cors',
-        credentials: 'omit',
-        headers: {
-          'Accept': 'application/json'
+      setLoadingMessage('Mengunggah data...');
+      const result = await registerParticipant({
+        child: {
+          name: data.namaAnak,
+          birthDate: data.tanggalLahir,
+          photo: compressedPhoto
+        },
+        parents: {
+          fatherName: data.namaAyah,
+          motherName: data.namaIbu,
+          phone: data.noTelp,
+          address: data.alamat
         }
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers));
+      setLoadingMessage('Menyimpan pendaftaran...');
+      console.log('Hasil pendaftaran:', result);
+      
+      // Reset form dan preview
+      reset();
+      setPreview(null);
 
-      const text = await response.text();
-      console.log('Raw response:', text);
-
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch (e) {
-        console.error('Failed to parse response:', e);
-        throw new Error('Invalid server response');
-      }
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Upload failed');
-      }
-
-      console.log('Success response:', result);
-
-      // Simpan data ke localStorage
-      const existingData = JSON.parse(localStorage.getItem('pesertaKhitan') || '[]')
-      const newData = [...existingData, { 
-        ...data, 
-        id: Date.now(), 
-        status: 'Terdaftar',
-        fotoUrl: result.data.fotoUrl 
-      }]
-      localStorage.setItem('pesertaKhitan', JSON.stringify(newData))
-
-      alert('Pendaftaran berhasil!')
-    } catch (error) {
-      console.error('Upload error:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-      alert(`Gagal mendaftar: ${error.message}`);
+      // Tampilkan alert dan redirect ke halaman daftar peserta
+      alert('Pendaftaran berhasil! Anda akan diarahkan ke halaman daftar peserta.');
+      navigate('/peserta');
+      
+    } catch (err) {
+      console.error('Error saat pendaftaran:', err);
+      alert(`Gagal mendaftar: ${err.message}`);
     } finally {
-      setUploading(false);
+      setLoadingMessage('');
     }
   };
 
   // Fungsi untuk compress image
   const compressImage = async (file) => {
-    if (!file.type.startsWith('image/')) return file;
+    if (!file) return null;
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File harus berupa gambar');
+    }
+    
+    // Validasi ukuran file
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('Ukuran foto maksimal 5MB');
+    }
     
     const options = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1024,
-      useWebWorker: true
+      maxSizeMB: 1,          // Hasil compress maksimal 1MB
+      maxWidthOrHeight: 1024, // Maksimal dimensi 1024px
+      useWebWorker: true,
+      fileType: file.type,   // Pertahankan tipe file asli
+      initialQuality: 0.8    // Kualitas awal 80%
     }
     
     try {
@@ -131,12 +129,29 @@ const Pendaftaran = () => {
       });
     } catch (error) {
       console.error('Error compressing image:', error);
-      return file;
+      throw new Error('Gagal memproses foto, silakan coba lagi');
     }
   }
 
   return (
     <div className="py-12 min-h-screen bg-gray-50">
+      {loading && (
+        <div className="flex fixed inset-0 z-50 justify-center items-center bg-black/50">
+          <div className="p-6 bg-white rounded-lg shadow-xl">
+            <div className="mx-auto w-8 h-8 rounded-full border-b-2 animate-spin border-primary"></div>
+            <p className="mt-2 text-center">{loadingMessage || 'Sedang memproses...'}</p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="container px-4 mx-auto mb-4">
+          <div className="p-4 text-red-700 bg-red-100 rounded-lg">
+            {error}
+          </div>
+        </div>
+      )}
+
       <div className="container px-4 mx-auto">
         <div className="mx-auto max-w-3xl">
           <div className="p-8 rounded-xl bg-card-pattern shadow-soft">
@@ -171,12 +186,36 @@ const Pendaftaran = () => {
                     </label>
                     <input
                       type="date"
-                      {...register('tanggalLahir', { required: 'Tanggal lahir wajib diisi' })}
+                      {...register('tanggalLahir', { 
+                        required: 'Tanggal lahir wajib diisi'
+                      })}
                       className="px-4 py-2 w-full rounded-lg border transition-colors border-neutral-300 focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      max={new Date().toISOString().split('T')[0]}
                     />
                     {errors.tanggalLahir && (
                       <p className="mt-1 text-sm text-red-500">{errors.tanggalLahir.message}</p>
                     )}
+                    {ageWarning && (
+                      <p className="mt-1 text-sm text-yellow-600">
+                        <svg 
+                          className="inline mr-1 w-4 h-4" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth="2" 
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
+                        </svg>
+                        {ageWarning}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      * Usia yang direkomendasikan minimal 6 tahun
+                    </p>
                   </div>
                 </div>
 
@@ -189,6 +228,14 @@ const Pendaftaran = () => {
                     accept="image/*"
                     {...register('foto', { 
                       required: 'Foto wajib diupload',
+                      validate: {
+                        fileSize: (files) => {
+                          if (files?.[0]?.size > 5 * 1024 * 1024) {
+                            return 'Ukuran foto maksimal 5MB';
+                          }
+                          return true;
+                        }
+                      },
                       onChange: handleImageChange
                     })}
                     className="px-4 py-2 w-full rounded-lg border transition-colors border-neutral-300 focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -196,6 +243,9 @@ const Pendaftaran = () => {
                   {errors.foto && (
                     <p className="mt-1 text-sm text-red-500">{errors.foto.message}</p>
                   )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    * Format: JPG, PNG, GIF (Maks. 5MB)
+                  </p>
                   
                   {preview && (
                     <div className="mt-4">
