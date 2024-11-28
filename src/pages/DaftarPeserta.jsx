@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRegistration } from '../context/RegistrationContext'
+import { exportToExcel } from '../utils/export'
 
 const DaftarPeserta = () => {
   const { registrations, loading, error, deleteRegistration } = useRegistration()
@@ -40,22 +41,51 @@ const DaftarPeserta = () => {
     }
   };
 
+  // Tambahkan fungsi untuk handle export
+  const handleExport = () => {
+    const filename = `data-peserta-khitan-${new Date().toISOString().split('T')[0]}`;
+    exportToExcel(filteredPeserta, filename);
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-primary-dark mb-8">
-        Daftar Peserta Khitan
-      </h1>
+    <div className="container px-4 py-8 mx-auto">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-primary-dark">
+          Daftar Peserta Khitan
+        </h1>
+        
+        {/* Tambahkan tombol export */}
+        <button
+          onClick={handleExport}
+          className="flex gap-2 items-center px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
+        >
+          <svg 
+            className="w-5 h-5" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth="2" 
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+            />
+          </svg>
+          Export ke Excel
+        </button>
+      </div>
 
       {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="w-8 h-8 rounded-full border-b-2 animate-spin border-primary"></div>
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6">
+        <div className="p-4 mb-6 text-red-700 bg-red-100 rounded-lg">
           {error}
         </div>
       )}
@@ -67,14 +97,14 @@ const DaftarPeserta = () => {
           placeholder="Cari nama peserta atau orang tua..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full md:w-96 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          className="px-4 py-2 w-full rounded-lg border border-gray-300 md:w-96 focus:ring-2 focus:ring-primary/20 focus:border-primary"
         />
       </div>
 
       {/* Peserta Table */}
       <div className="overflow-x-auto bg-white rounded-lg shadow">
         <table className="w-full">
-          <thead className="bg-primary text-white">
+          <thead className="text-white bg-primary">
             <tr>
               <th className="px-6 py-3 text-left">No</th>
               <th className="px-6 py-3 text-left">Foto</th>
@@ -95,7 +125,7 @@ const DaftarPeserta = () => {
                     <img 
                       src={peserta.child.photoUrl} 
                       alt={peserta.child.name}
-                      className="w-16 h-16 object-cover rounded-lg border-2 border-white shadow"
+                      className="object-cover w-16 h-16 rounded-lg border-2 border-white shadow"
                     />
                   )}
                 </td>
@@ -152,20 +182,20 @@ const DaftarPeserta = () => {
       </div>
 
       {/* Statistik */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+      <div className="grid grid-cols-1 gap-6 mt-8 md:grid-cols-3">
+        <div className="p-6 bg-white rounded-lg shadow">
           <div className="text-sm text-gray-500">Total Peserta</div>
           <div className="text-2xl font-bold text-primary">
             {registrations.length}
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="p-6 bg-white rounded-lg shadow">
           <div className="text-sm text-gray-500">Status Terdaftar</div>
           <div className="text-2xl font-bold text-green-600">
             {registrations.filter(p => p.status === 'REGISTERED').length}
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="p-6 bg-white rounded-lg shadow">
           <div className="text-sm text-gray-500">Menunggu Verifikasi</div>
           <div className="text-2xl font-bold text-yellow-600">
             {registrations.filter(p => p.verificationStatus === 'PENDING').length}
