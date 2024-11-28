@@ -107,5 +107,53 @@ export const GitHubService = {
       console.error('GitHub SHA Error:', error);
       throw new Error('Gagal mendapatkan SHA file');
     }
+  },
+
+  async deleteRegistration(id, password) {
+    try {
+      if (password !== "123") {
+        throw new Error("Password salah!");
+      }
+
+      const currentData = await this.getRegistrations();
+      const index = currentData.registrations.findIndex(reg => reg.id === id);
+      
+      if (index === -1) {
+        throw new Error("Data tidak ditemukan");
+      }
+
+      // Hapus data
+      currentData.registrations.splice(index, 1);
+      currentData.metadata = {
+        totalQuota: 45,
+        registeredCount: currentData.registrations.length,
+        lastUpdated: new Date().toISOString()
+      };
+
+      const response = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/data/registrations.json`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: `Hapus pendaftaran: ${id}`,
+            content: btoa(JSON.stringify(currentData, null, 2)),
+            sha: await this.getFileSHA()
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Gagal menghapus data");
+      }
+
+      return currentData;
+    } catch (error) {
+      console.error('Delete Error:', error);
+      throw error;
+    }
   }
 }; 

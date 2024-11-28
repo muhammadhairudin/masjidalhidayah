@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useRegistration } from '../context/RegistrationContext'
 
 const DaftarPeserta = () => {
-  const { registrations, loading, error } = useRegistration()
+  const { registrations, loading, error, deleteRegistration } = useRegistration()
   const [search, setSearch] = useState('')
   const [filteredPeserta, setFilteredPeserta] = useState([])
 
@@ -27,6 +27,18 @@ const DaftarPeserta = () => {
     }
     return new Date(dateString).toLocaleDateString('id-ID', options)
   }
+
+  const handleDelete = async (id) => {
+    try {
+      const password = prompt("Masukkan password untuk menghapus data:");
+      if (!password) return;
+
+      await deleteRegistration(id, password);
+      alert("Data berhasil dihapus");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -71,6 +83,7 @@ const DaftarPeserta = () => {
               <th className="px-6 py-3 text-left">Kontak</th>
               <th className="px-6 py-3 text-left">Tanggal Daftar</th>
               <th className="px-6 py-3 text-left">Status</th>
+              <th className="px-6 py-3 text-left">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -116,6 +129,14 @@ const DaftarPeserta = () => {
                       {peserta.verificationStatus}
                     </span>
                   )}
+                </td>
+                <td className="px-6 py-4">
+                  <button
+                    onClick={() => handleDelete(peserta.id)}
+                    className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600"
+                  >
+                    Hapus
+                  </button>
                 </td>
               </tr>
             ))}

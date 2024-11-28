@@ -79,12 +79,36 @@ export const RegistrationProvider = ({ children }) => {
     }
   };
 
+  const deleteRegistration = async (id, password) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await GitHubService.deleteRegistration(id, password);
+      
+      setRegistrations(result.registrations);
+      setQuota({
+        total: result.metadata.totalQuota,
+        registered: result.metadata.registeredCount,
+        available: result.metadata.totalQuota - result.metadata.registeredCount
+      });
+
+      return result;
+    } catch (error) {
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     registrations,
     quota,
     loading,
     error,
-    registerParticipant
+    registerParticipant,
+    deleteRegistration
   };
 
   return (
