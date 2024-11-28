@@ -155,5 +155,100 @@ export const GitHubService = {
       console.error('Delete Error:', error);
       throw error;
     }
+  },
+
+  async commitFiles(files) {
+    try {
+      // Dapatkan base tree dari branch utama
+      const masterRef = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs/heads/main`,
+        {
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+          }
+        }
+      ).then(res => res.json());
+
+      // Buat blob untuk setiap file
+      const blobs = await Promise.all(
+        files.map(async file => {
+          const blobData = await fetch(
+            `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/blobs`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `token ${GITHUB_TOKEN}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                content: btoa(file.content),
+                encoding: 'base64'
+              })
+            }
+          ).then(res => res.json());
+
+          return {
+            path: file.path,
+            mode: '100644',
+            type: 'blob',
+            sha: blobData.sha
+          };
+        })
+      );
+
+      // Buat tree baru
+      const tree = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/trees`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            base_tree: masterRef.object.sha,
+            tree: blobs
+          })
+        }
+      ).then(res => res.json());
+
+      // Buat commit
+      const commit = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/commits`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: 'Tambah fitur export data',
+            tree: tree.sha,
+            parents: [masterRef.object.sha]
+          })
+        }
+      ).then(res => res.json());
+
+      // Update referensi branch
+      await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/git/refs/heads/main`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sha: commit.sha,
+            force: true
+          })
+        }
+      );
+
+      return true;
+    } catch (error) {
+      console.error('GitHub Commit Error:', error);
+      throw new Error('Gagal mengirim update ke repository');
+    }
   }
 }; 
