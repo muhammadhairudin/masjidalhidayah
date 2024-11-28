@@ -1,0 +1,18 @@
+# Allow direct access to images
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "*"
+</IfModule>
+
+# Only allow image files
+<FilesMatch "\.(jpg|jpeg|png|gif)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Prevent script execution
+SetHandler default-handler
+Options -ExecCGI
+php_flag engine off
+
+# Protect directory listing
+Options -Indexes

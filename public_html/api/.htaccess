@@ -1,0 +1,31 @@
+# PHP Settings
+php_value upload_max_filesize 10M
+php_value post_max_size 10M
+php_value max_execution_time 300
+php_value max_input_time 300
+php_value memory_limit 256M
+
+# CORS Headers
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "POST, GET, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, Accept"
+Header set Access-Control-Max-Age "3600"
+
+# Handle OPTIONS
+RewriteEngine On
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
+
+# Error Handling
+php_flag display_errors on
+php_value error_reporting E_ALL
+
+# Directory Protection
+Options -Indexes
+
+# Allow uploads directory access
+<Directory "/uploads">
+    Options -Indexes
+    AllowOverride None
+    Require all granted
+</Directory> 
